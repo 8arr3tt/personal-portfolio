@@ -1,0 +1,17 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`MainLayout renders in correct order: header, main, footer 1`] = `
+<header
+  data-testid="header"
+>
+  Header
+</header>
+`;
+
+exports[`MainLayout renders in correct order: header, main, footer 2`] = `
+<footer
+  data-testid="footer"
+>
+  Footer
+</footer>
+`;
