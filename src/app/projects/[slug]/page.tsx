@@ -1,60 +1,108 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { Card } from '@/components/ui/card';
+import { notFound } from 'next/navigation';
+import { getProjectBySlug, getAllProjectSlugs } from '@/data/projects';
+import { ProjectHeader } from '@/components/projects/project-header';
+import { ProjectLinks } from '@/components/projects/project-links';
+import { Separator } from '@/components/ui/separator';
 
 interface ProjectPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
+/**
+ * Generate static params for all project slugs
+ */
+export async function generateStaticParams() {
+  const slugs = getAllProjectSlugs();
+  return slugs.map((slug) => ({ slug }));
+}
+
+/**
+ * Generate metadata for the project page
+ */
 export async function generateMetadata(
   { params }: ProjectPageProps
 ): Promise<Metadata> {
+  const { slug } = await params;
+  const project = getProjectBySlug(slug);
+
+  if (!project) {
+    return {
+      title: 'Project Not Found',
+      description: 'The requested project could not be found.',
+    };
+  }
+
   return {
-    title: `Project: ${params.slug}`,
-    description: `Details for project ${params.slug}`,
+    title: project.title,
+    description: project.description,
+    openGraph: {
+      title: project.title,
+      description: project.description,
+      type: 'article',
+    },
   };
 }
 
-export default function ProjectPage({ params }: ProjectPageProps) {
+export default async function ProjectPage({ params }: ProjectPageProps) {
+  const { slug } = await params;
+  const project = getProjectBySlug(slug);
+
+  // Return 404 for invalid slugs
+  if (!project) {
+    notFound();
+  }
+
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
+        {/* Back navigation */}
+        <div className="mb-8">
           <Link
             href="/projects"
-            className="text-primary hover:underline inline-flex items-center gap-2"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            ← Back to Projects
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            Back to Projects
           </Link>
         </div>
 
-        <Card className="p-8">
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Project: {params.slug}</h1>
-              <p className="text-muted-foreground">
-                Dynamic route parameter: <code className="bg-muted px-2 py-1 rounded">{params.slug}</code>
-              </p>
-            </div>
+        {/* Project Header */}
+        <ProjectHeader project={project} />
 
-            <div className="border-t pt-6">
-              <h2 className="text-2xl font-semibold mb-3">Coming Soon</h2>
-              <p className="text-muted-foreground">
-                Individual project pages are currently being developed.
-                This page will soon display detailed information about specific projects.
-              </p>
-            </div>
+        {/* Project Links */}
+        {project.links && project.links.length > 0 && (
+          <>
+            <Separator className="my-8" />
+            <ProjectLinks links={project.links} />
+          </>
+        )}
 
-            <div className="bg-muted p-4 rounded-lg">
-              <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> This is a placeholder page demonstrating
-                Next.js dynamic routing with the [slug] parameter.
-              </p>
-            </div>
-          </div>
-        </Card>
+        {/* Documentation Content Area */}
+        <Separator className="my-8" />
+        <section className="prose prose-neutral dark:prose-invert max-w-none">
+          <h2>Documentation</h2>
+          <p className="text-muted-foreground">
+            Project documentation will be displayed here. The full documentation with
+            usage examples, API reference, and interactive demos will be added in the next ticket.
+          </p>
+        </section>
       </div>
     </div>
   );

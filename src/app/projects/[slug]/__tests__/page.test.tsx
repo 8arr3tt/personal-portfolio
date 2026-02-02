@@ -1,45 +1,103 @@
 import { render, screen } from '@testing-library/react';
 import ProjectPage from '../page';
 
+// Mock the notFound function from next/navigation
+jest.mock('next/navigation', () => ({
+  notFound: jest.fn(),
+}));
+
+// Mock the project data functions
+jest.mock('@/data/projects', () => ({
+  getProjectBySlug: (slug: string) => {
+    if (slug === 'have-we-met') {
+      return {
+        id: 'have-we-met',
+        slug: 'have-we-met',
+        title: 'have-we-met',
+        description: 'An identity resolution library for Node.js',
+        tags: ['TypeScript', 'Node.js'],
+        links: [
+          { type: 'github', label: 'View on GitHub', url: 'https://github.com/test/have-we-met' },
+          { type: 'npm', label: 'npm Package', url: 'https://www.npmjs.com/package/have-we-met' },
+        ],
+        published: true,
+        featured: true,
+        status: 'completed',
+      };
+    }
+    return undefined;
+  },
+  getAllProjectSlugs: () => ['have-we-met'],
+}));
+
 describe('ProjectPage', () => {
-  const mockParams = {
-    slug: 'test-project',
-  };
-
-  it('renders the project page with slug parameter', () => {
-    render(<ProjectPage params={mockParams} />);
-    expect(screen.getByText(/Project: test-project/i)).toBeInTheDocument();
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('displays the slug parameter in code element', () => {
-    render(<ProjectPage params={mockParams} />);
-    const codeElement = screen.getByText('test-project');
-    expect(codeElement).toBeInTheDocument();
-    expect(codeElement.tagName).toBe('CODE');
+  it('renders the project page with project data', async () => {
+    const params = Promise.resolve({ slug: 'have-we-met' });
+    const Page = await ProjectPage({ params });
+    render(Page);
+
+    expect(screen.getByRole('heading', { name: 'have-we-met' })).toBeInTheDocument();
+    expect(screen.getByText(/identity resolution library/i)).toBeInTheDocument();
   });
 
-  it('renders the coming soon message', () => {
-    render(<ProjectPage params={mockParams} />);
-    expect(screen.getByText('Coming Soon')).toBeInTheDocument();
+  it('displays project tags', async () => {
+    const params = Promise.resolve({ slug: 'have-we-met' });
+    const Page = await ProjectPage({ params });
+    render(Page);
+
+    expect(screen.getByText('TypeScript')).toBeInTheDocument();
+    expect(screen.getByText('Node.js')).toBeInTheDocument();
   });
 
-  it('renders the back to projects link', () => {
-    render(<ProjectPage params={mockParams} />);
-    const backLink = screen.getByText('← Back to Projects');
+  it('renders the back to projects link', async () => {
+    const params = Promise.resolve({ slug: 'have-we-met' });
+    const Page = await ProjectPage({ params });
+    render(Page);
+
+    const backLink = screen.getByText('Back to Projects');
     expect(backLink).toBeInTheDocument();
-    expect(backLink).toHaveAttribute('href', '/projects');
+    expect(backLink.closest('a')).toHaveAttribute('href', '/projects');
   });
 
-  it('displays placeholder note about dynamic routing', () => {
-    render(<ProjectPage params={mockParams} />);
-    expect(screen.getByText(/demonstrating Next.js dynamic routing/i)).toBeInTheDocument();
+  it('displays GitHub and npm links', async () => {
+    const params = Promise.resolve({ slug: 'have-we-met' });
+    const Page = await ProjectPage({ params });
+    render(Page);
+
+    expect(screen.getByText('View on GitHub')).toBeInTheDocument();
+    expect(screen.getByText('npm Package')).toBeInTheDocument();
   });
 
-  it('handles different slug parameters', () => {
-    const { rerender } = render(<ProjectPage params={{ slug: 'first-project' }} />);
-    expect(screen.getByText(/Project: first-project/i)).toBeInTheDocument();
+  it('shows featured badge for featured projects', async () => {
+    const params = Promise.resolve({ slug: 'have-we-met' });
+    const Page = await ProjectPage({ params });
+    render(Page);
 
-    rerender(<ProjectPage params={{ slug: 'second-project' }} />);
-    expect(screen.getByText(/Project: second-project/i)).toBeInTheDocument();
+    expect(screen.getByText('Featured Project')).toBeInTheDocument();
+  });
+
+  it('shows completed status badge', async () => {
+    const params = Promise.resolve({ slug: 'have-we-met' });
+    const Page = await ProjectPage({ params });
+    render(Page);
+
+    expect(screen.getByText('Completed')).toBeInTheDocument();
+  });
+
+  it('calls notFound for invalid slugs', async () => {
+    const { notFound } = require('next/navigation');
+    const params = Promise.resolve({ slug: 'invalid-project' });
+
+    try {
+      await ProjectPage({ params });
+    } catch {
+      // notFound throws, which is expected
+    }
+
+    expect(notFound).toHaveBeenCalled();
   });
 });
