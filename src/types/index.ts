@@ -3,11 +3,18 @@
  */
 
 /**
+ * Known link types for type-safe link handling
+ */
+export type ProjectLinkType = 'github' | 'npm' | 'demo' | 'docs' | 'article' | 'other';
+
+/**
  * Project type definition
- * This will be expanded in Phase 2 with MDX integration
  */
 export interface Project {
-  /** Unique identifier/slug for the project */
+  /** Unique identifier for the project */
+  id: string;
+
+  /** URL-friendly slug for routing */
   slug: string;
 
   /** Project title */
@@ -37,6 +44,9 @@ export interface Project {
   /** Whether the project is published/visible */
   published?: boolean;
 
+  /** Whether this is a featured project (displayed prominently) */
+  featured?: boolean;
+
   /** Project status */
   status?: 'completed' | 'in-progress' | 'planned';
 }
@@ -45,8 +55,8 @@ export interface Project {
  * External link for a project
  */
 export interface ProjectLink {
-  /** Link type (e.g., 'github', 'demo', 'article') */
-  type: string;
+  /** Link type for categorization and icon display */
+  type: ProjectLinkType;
 
   /** Display label for the link */
   label: string;
