@@ -1,6 +1,6 @@
 /**
  * GitHub API client for fetching repository data
- * Provides authentication, rate limit handling, and typed responses
+ * Provides authentication, rate limit handling, typed responses, and caching
  */
 
 import {
@@ -17,6 +17,14 @@ import {
   GitHubBlob,
   ParsedFileContent,
 } from './github/types';
+import {
+  GitHubCache,
+  getGitHubCache,
+  CACHE_DURATIONS,
+  cachedFetchTree,
+  cachedFetchFileByPath,
+  cachedFetchFileBySha,
+} from './github/cache';
 
 const DEFAULT_BASE_URL = 'https://api.github.com';
 
@@ -55,16 +63,58 @@ function parseRateLimitHeaders(headers: Headers): RateLimitHeaders {
 }
 
 /**
+ * Extended configuration with cache options
+ */
+export interface GitHubClientConfigWithCache extends GitHubClientConfig {
+  /** Enable caching (default: true) */
+  enableCache?: boolean;
+  /** Custom cache instance (uses global cache by default) */
+  cache?: GitHubCache;
+}
+
+/**
  * GitHub API client class
  */
 export class GitHubClient {
   private token: string | undefined;
   private baseUrl: string;
   private lastRateLimit: GitHubRateLimit | null = null;
+  private cacheEnabled: boolean;
+  private cache: GitHubCache;
 
-  constructor(config: GitHubClientConfig = {}) {
+  constructor(config: GitHubClientConfigWithCache = {}) {
     this.token = config.token ?? process.env.GITHUB_TOKEN;
     this.baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
+    this.cacheEnabled = config.enableCache ?? true;
+    this.cache = config.cache ?? getGitHubCache();
+  }
+
+  /**
+   * Check if caching is enabled
+   */
+  isCacheEnabled(): boolean {
+    return this.cacheEnabled;
+  }
+
+  /**
+   * Get the cache instance
+   */
+  getCache(): GitHubCache {
+    return this.cache;
+  }
+
+  /**
+   * Invalidate cache for a specific repository
+   */
+  invalidateCache(owner: string, repo: string): void {
+    this.cache.invalidateRepository(owner, repo);
+  }
+
+  /**
+   * Invalidate all cached data
+   */
+  invalidateAllCache(): void {
+    this.cache.invalidateAll();
   }
 
   /**
@@ -168,7 +218,30 @@ export class GitHubClient {
     owner: string,
     repo: string
   ): Promise<GitHubApiResult<GitHubRepository>> {
-    return this.request<GitHubRepository>(`/repos/${owner}/${repo}`);
+    // Check cache first
+    if (this.cacheEnabled) {
+      const cached = this.cache.getRepository<GitHubRepository>(owner, repo);
+      if (cached) {
+        return {
+          data: cached,
+          rateLimit: this.lastRateLimit ?? {
+            limit: 60,
+            remaining: 60,
+            reset: 0,
+            used: 0,
+          },
+        };
+      }
+    }
+
+    const result = await this.request<GitHubRepository>(`/repos/${owner}/${repo}`);
+
+    // Cache the result
+    if (this.cacheEnabled) {
+      this.cache.setRepository(owner, repo, result.data);
+    }
+
+    return result;
   }
 
   /**
@@ -213,6 +286,22 @@ export class GitHubClient {
     repo: string,
     ref?: string
   ): Promise<GitHubApiResult<ParsedRepositoryTree>> {
+    // Check cache first
+    if (this.cacheEnabled) {
+      const cached = this.cache.getTree(owner, repo, ref);
+      if (cached) {
+        return {
+          data: cached,
+          rateLimit: this.lastRateLimit ?? {
+            limit: 60,
+            remaining: 60,
+            reset: 0,
+            used: 0,
+          },
+        };
+      }
+    }
+
     const result = await this.getRepositoryTree(owner, repo, ref, true);
 
     const files: ParsedTreeItem[] = [];
@@ -235,14 +324,21 @@ export class GitHubClient {
       }
     }
 
+    const parsedTree: ParsedRepositoryTree = {
+      sha: result.data.sha,
+      truncated: result.data.truncated,
+      files,
+      directories,
+      all: [...directories, ...files],
+    };
+
+    // Cache the result (30 minute TTL for trees)
+    if (this.cacheEnabled) {
+      this.cache.setTree(owner, repo, ref, parsedTree);
+    }
+
     return {
-      data: {
-        sha: result.data.sha,
-        truncated: result.data.truncated,
-        files,
-        directories,
-        all: [...directories, ...files],
-      },
+      data: parsedTree,
       rateLimit: result.rateLimit,
     };
   }
