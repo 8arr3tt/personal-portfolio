@@ -106,6 +106,40 @@ export interface GitHubFileContent {
 }
 
 /**
+ * GitHub blob response (raw content from git/blobs endpoint)
+ */
+export interface GitHubBlob {
+  sha: string;
+  node_id: string;
+  size: number;
+  url: string;
+  content: string; // Base64 encoded
+  encoding: 'base64' | 'utf-8';
+}
+
+/**
+ * Parsed file content with decoded data
+ */
+export interface ParsedFileContent {
+  /** File name */
+  name: string;
+  /** File path relative to repository root */
+  path: string;
+  /** Git SHA hash */
+  sha: string;
+  /** File size in bytes */
+  size: number;
+  /** File encoding used by GitHub */
+  encoding: 'base64' | 'utf-8';
+  /** Decoded file content (null for binary files) */
+  content: string | null;
+  /** Whether this file is detected as binary */
+  isBinary: boolean;
+  /** Raw base64 content (always available) */
+  rawContent: string;
+}
+
+/**
  * GitHub error response
  */
 export interface GitHubError {

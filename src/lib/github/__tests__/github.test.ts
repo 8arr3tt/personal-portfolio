@@ -8,6 +8,9 @@ import {
   GitHubAuthError,
   GitHubTree,
   ParsedRepositoryTree,
+  GitHubFileContent,
+  GitHubBlob,
+  ParsedFileContent,
 } from '../../github';
 
 // Mock global fetch
@@ -691,6 +694,295 @@ describe('GitHubClient', () => {
       const result = await client.getDirectoryContents('owner', 'repo', 'nonexistent', 'main');
 
       expect(result.data).toHaveLength(0);
+    });
+  });
+
+  describe('getFileContent', () => {
+    // Helper to encode string to base64
+    function toBase64(str: string): string {
+      return Buffer.from(str).toString('base64');
+    }
+
+    const mockFileContentResponse: GitHubFileContent = {
+      name: 'index.ts',
+      path: 'src/index.ts',
+      sha: 'abc123',
+      size: 42,
+      url: 'https://api.github.com/repos/owner/repo/contents/src/index.ts',
+      html_url: 'https://github.com/owner/repo/blob/main/src/index.ts',
+      git_url: 'https://api.github.com/repos/owner/repo/git/blobs/abc123',
+      download_url: 'https://raw.githubusercontent.com/owner/repo/main/src/index.ts',
+      type: 'file',
+      content: toBase64('export const hello = "world";'),
+      encoding: 'base64',
+    };
+
+    it('fetches file content by path', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockFileContentResponse));
+
+      const result = await client.getFileContent('owner', 'repo', 'src/index.ts');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/owner/repo/contents/src/index.ts',
+        expect.anything()
+      );
+      expect(result.data.name).toBe('index.ts');
+      expect(result.data.path).toBe('src/index.ts');
+      expect(result.data.sha).toBe('abc123');
+    });
+
+    it('decodes base64 content correctly', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockFileContentResponse));
+
+      const result = await client.getFileContent('owner', 'repo', 'src/index.ts');
+
+      expect(result.data.content).toBe('export const hello = "world";');
+      expect(result.data.isBinary).toBe(false);
+    });
+
+    it('supports fetching file at specific ref', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockFileContentResponse));
+
+      await client.getFileContent('owner', 'repo', 'src/index.ts', 'develop');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/owner/repo/contents/src/index.ts?ref=develop',
+        expect.anything()
+      );
+    });
+
+    it('normalizes paths with leading slashes', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockFileContentResponse));
+
+      await client.getFileContent('owner', 'repo', '/src/index.ts');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/owner/repo/contents/src/index.ts',
+        expect.anything()
+      );
+    });
+
+    it('returns file metadata', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockFileContentResponse));
+
+      const result = await client.getFileContent('owner', 'repo', 'src/index.ts');
+
+      expect(result.data.size).toBe(42);
+      expect(result.data.encoding).toBe('base64');
+      expect(result.data.rawContent).toBe(mockFileContentResponse.content);
+    });
+
+    it('handles binary files by extension', async () => {
+      const client = new GitHubClient();
+      const binaryResponse: GitHubFileContent = {
+        ...mockFileContentResponse,
+        name: 'image.png',
+        path: 'assets/image.png',
+        content: toBase64('\x89PNG\r\n\x1a\n'), // PNG magic bytes
+      };
+      mockFetch.mockResolvedValueOnce(createMockResponse(binaryResponse));
+
+      const result = await client.getFileContent('owner', 'repo', 'assets/image.png');
+
+      expect(result.data.isBinary).toBe(true);
+      expect(result.data.content).toBeNull();
+      expect(result.data.rawContent).toBe(binaryResponse.content);
+    });
+
+    it('handles content with null bytes as binary', async () => {
+      const client = new GitHubClient();
+      const binaryResponse: GitHubFileContent = {
+        ...mockFileContentResponse,
+        name: 'data.bin',
+        path: 'data.bin',
+        content: toBase64('hello\x00world'), // Contains null byte
+      };
+      mockFetch.mockResolvedValueOnce(createMockResponse(binaryResponse));
+
+      const result = await client.getFileContent('owner', 'repo', 'data.bin');
+
+      expect(result.data.isBinary).toBe(true);
+      expect(result.data.content).toBeNull();
+    });
+
+    it('handles base64 content with newlines', async () => {
+      const client = new GitHubClient();
+      const longContent = 'a'.repeat(100);
+      // GitHub often splits base64 into lines
+      const base64WithNewlines = Buffer.from(longContent).toString('base64').match(/.{1,76}/g)?.join('\n') || '';
+      const responseWithNewlines: GitHubFileContent = {
+        ...mockFileContentResponse,
+        content: base64WithNewlines,
+      };
+      mockFetch.mockResolvedValueOnce(createMockResponse(responseWithNewlines));
+
+      const result = await client.getFileContent('owner', 'repo', 'src/index.ts');
+
+      expect(result.data.content).toBe(longContent);
+    });
+
+    it('handles 404 for non-existent files', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(
+          { message: 'Not Found' },
+          { status: 404, ok: false }
+        )
+      );
+
+      await expect(
+        client.getFileContent('owner', 'repo', 'nonexistent.ts')
+      ).rejects.toThrow(GitHubNotFoundError);
+    });
+  });
+
+  describe('getFileContentBySha', () => {
+    function toBase64(str: string): string {
+      return Buffer.from(str).toString('base64');
+    }
+
+    const mockBlobResponse: GitHubBlob = {
+      sha: 'abc123',
+      node_id: 'MDQ6QmxvYjEyMzQ1',
+      size: 42,
+      url: 'https://api.github.com/repos/owner/repo/git/blobs/abc123',
+      content: toBase64('export const hello = "world";'),
+      encoding: 'base64',
+    };
+
+    it('fetches blob content by SHA', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockBlobResponse));
+
+      const result = await client.getFileContentBySha('owner', 'repo', 'abc123');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/owner/repo/git/blobs/abc123',
+        expect.anything()
+      );
+      expect(result.data.sha).toBe('abc123');
+    });
+
+    it('decodes base64 blob content', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockBlobResponse));
+
+      const result = await client.getFileContentBySha('owner', 'repo', 'abc123');
+
+      expect(result.data.content).toBe('export const hello = "world";');
+      expect(result.data.isBinary).toBe(false);
+    });
+
+    it('preserves blob metadata', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockBlobResponse));
+
+      const result = await client.getFileContentBySha('owner', 'repo', 'abc123');
+
+      expect(result.data.size).toBe(42);
+      expect(result.data.encoding).toBe('base64');
+      expect(result.data.rawContent).toBe(mockBlobResponse.content);
+    });
+
+    it('handles binary blob content', async () => {
+      const client = new GitHubClient();
+      const binaryBlobResponse: GitHubBlob = {
+        ...mockBlobResponse,
+        content: toBase64('\x00\x01\x02\x03'), // Binary data with null bytes
+      };
+      mockFetch.mockResolvedValueOnce(createMockResponse(binaryBlobResponse));
+
+      const result = await client.getFileContentBySha('owner', 'repo', 'abc123');
+
+      expect(result.data.isBinary).toBe(true);
+      expect(result.data.content).toBeNull();
+    });
+
+    it('sets empty name and path for blob content', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockBlobResponse));
+
+      const result = await client.getFileContentBySha('owner', 'repo', 'abc123');
+
+      // Blob API doesn't provide name/path info
+      expect(result.data.name).toBe('');
+      expect(result.data.path).toBe('');
+    });
+  });
+
+  describe('getRawFileContent', () => {
+    function toBase64(str: string): string {
+      return Buffer.from(str).toString('base64');
+    }
+
+    const mockFileContentResponse: GitHubFileContent = {
+      name: 'config.json',
+      path: 'config.json',
+      sha: 'def456',
+      size: 25,
+      url: 'https://api.github.com/repos/owner/repo/contents/config.json',
+      html_url: 'https://github.com/owner/repo/blob/main/config.json',
+      git_url: 'https://api.github.com/repos/owner/repo/git/blobs/def456',
+      download_url: 'https://raw.githubusercontent.com/owner/repo/main/config.json',
+      type: 'file',
+      content: toBase64('{"key": "value"}'),
+      encoding: 'base64',
+    };
+
+    it('returns decoded content directly', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockFileContentResponse));
+
+      const result = await client.getRawFileContent('owner', 'repo', 'config.json');
+
+      expect(result.data).toBe('{"key": "value"}');
+    });
+
+    it('returns null for binary files', async () => {
+      const client = new GitHubClient();
+      const binaryResponse: GitHubFileContent = {
+        ...mockFileContentResponse,
+        name: 'image.jpg',
+        path: 'image.jpg',
+        content: toBase64('\xff\xd8\xff\xe0'), // JPEG magic bytes
+      };
+      mockFetch.mockResolvedValueOnce(createMockResponse(binaryResponse));
+
+      const result = await client.getRawFileContent('owner', 'repo', 'image.jpg');
+
+      expect(result.data).toBeNull();
+    });
+
+    it('supports ref parameter', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockFileContentResponse));
+
+      await client.getRawFileContent('owner', 'repo', 'config.json', 'v1.0.0');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/owner/repo/contents/config.json?ref=v1.0.0',
+        expect.anything()
+      );
+    });
+
+    it('includes rate limit in response', async () => {
+      const client = new GitHubClient();
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(mockFileContentResponse, {
+          headers: {
+            'x-ratelimit-remaining': '42',
+          },
+        })
+      );
+
+      const result = await client.getRawFileContent('owner', 'repo', 'config.json');
+
+      expect(result.rateLimit.remaining).toBe(42);
     });
   });
 });
