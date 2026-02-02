@@ -1,8 +1,15 @@
+import Link from 'next/link'
 import { HeroSection } from '@/components/hero-section'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
+import { ProjectCard } from '@/components/projects/project-card'
+import { getFeaturedProjects, getPublishedProjects } from '@/data/projects'
 
 export default function Home() {
+  const featuredProjects = getFeaturedProjects()
+  const allProjects = getPublishedProjects()
+
   return (
     <div className="flex flex-col items-center">
       {/* Hero Section */}
@@ -22,27 +29,27 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((item) => (
-              <Card key={item} className="flex flex-col h-full hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="w-full h-48 bg-gradient-to-br from-primary/10 to-primary/5 rounded-md mb-4 flex items-center justify-center">
-                    <span className="text-muted-foreground text-sm">Project Preview</span>
-                  </div>
-                  <CardTitle>Coming Soon</CardTitle>
-                  <CardDescription>
-                    Project details will be added in the next phase
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground">
-                    This section will showcase featured projects with descriptions,
-                    technologies used, and links to live demos and repositories.
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {featuredProjects.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {allProjects.slice(0, 3).map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          )}
+
+          {allProjects.length > featuredProjects.length && (
+            <div className="flex justify-center pt-4">
+              <Button asChild variant="outline" size="lg">
+                <Link href="/projects">View All Projects</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 

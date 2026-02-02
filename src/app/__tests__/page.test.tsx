@@ -1,9 +1,19 @@
 import { render, screen } from '@testing-library/react'
 import Home from '../page'
+import { getFeaturedProjects, getPublishedProjects } from '@/data/projects'
 
 // Mock the HeroSection component
 jest.mock('@/components/hero-section', () => ({
   HeroSection: () => <div data-testid="hero-section">Hero Section</div>,
+}))
+
+// Mock the ProjectCard component for simpler testing
+jest.mock('@/components/projects/project-card', () => ({
+  ProjectCard: ({ project }: { project: { id: string; title: string } }) => (
+    <div data-testid={`project-card-${project.id}`}>
+      <span>{project.title}</span>
+    </div>
+  ),
 }))
 
 describe('Home Page', () => {
@@ -20,11 +30,24 @@ describe('Home Page', () => {
     expect(screen.getByText(/Showcase of recent work/i)).toBeInTheDocument()
   })
 
-  it('renders three project placeholder cards', () => {
+  it('renders featured projects from data', () => {
     render(<Home />)
 
-    const comingSoonCards = screen.getAllByText('Coming Soon')
-    expect(comingSoonCards).toHaveLength(3)
+    const featuredProjects = getFeaturedProjects()
+
+    // Each featured project should have a card rendered
+    featuredProjects.forEach((project) => {
+      expect(screen.getByTestId(`project-card-${project.id}`)).toBeInTheDocument()
+      expect(screen.getByText(project.title)).toBeInTheDocument()
+    })
+  })
+
+  it('renders have-we-met as a featured project', () => {
+    render(<Home />)
+
+    // have-we-met is marked as featured, so it should appear
+    expect(screen.getByTestId('project-card-have-we-met')).toBeInTheDocument()
+    expect(screen.getByText('have-we-met')).toBeInTheDocument()
   })
 
   it('renders the skills and technologies section', () => {
@@ -67,5 +90,29 @@ describe('Home Page', () => {
     // Check for h2 headings in sections
     const h2Headings = screen.getAllByRole('heading', { level: 2 })
     expect(h2Headings.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('renders View All Projects button when there are more projects', () => {
+    render(<Home />)
+
+    const allProjects = getPublishedProjects()
+    const featuredProjects = getFeaturedProjects()
+
+    // If there are more projects than featured ones, the button should appear
+    if (allProjects.length > featuredProjects.length) {
+      expect(screen.getByRole('link', { name: /view all projects/i })).toBeInTheDocument()
+    }
+  })
+
+  it('View All Projects button links to /projects', () => {
+    render(<Home />)
+
+    const allProjects = getPublishedProjects()
+    const featuredProjects = getFeaturedProjects()
+
+    if (allProjects.length > featuredProjects.length) {
+      const viewAllLink = screen.getByRole('link', { name: /view all projects/i })
+      expect(viewAllLink).toHaveAttribute('href', '/projects')
+    }
   })
 })

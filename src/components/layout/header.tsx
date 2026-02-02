@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
-import { NAV_ITEMS } from '@/lib/navigation'
+import { NAV_ITEMS, isActiveRoute } from '@/lib/navigation'
 import { useState } from 'react'
 
 export function Header() {
@@ -37,7 +37,7 @@ export function Header() {
               href={item.href}
               className={cn(
                 'text-sm font-medium transition-colors hover:text-primary',
-                pathname === item.href
+                isActiveRoute(pathname, item.href)
                   ? 'text-foreground'
                   : 'text-muted-foreground'
               )}
@@ -77,7 +77,7 @@ export function Header() {
                     onClick={() => setIsOpen(false)}
                     className={cn(
                       'text-sm font-medium transition-colors hover:text-primary px-2 py-1 rounded-md',
-                      pathname === item.href
+                      isActiveRoute(pathname, item.href)
                         ? 'text-foreground bg-accent'
                         : 'text-muted-foreground'
                     )}

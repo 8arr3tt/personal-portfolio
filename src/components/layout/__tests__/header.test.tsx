@@ -79,4 +79,60 @@ describe('Header', () => {
     expect(desktopNav).toBeInTheDocument()
     expect(mobileMenuContainer).toBeInTheDocument()
   })
+
+  describe('active navigation state', () => {
+    it('highlights Home link when on home page', () => {
+      (usePathname as jest.Mock).mockReturnValue('/')
+      const { container } = render(<Header />)
+
+      const desktopNav = container.querySelector('nav.hidden.md\\:flex')
+      const homeLink = desktopNav?.querySelector('a[href="/"]')
+      const projectsLink = desktopNav?.querySelector('a[href="/projects"]')
+
+      expect(homeLink?.className).toContain('text-foreground')
+      expect(projectsLink?.className).toContain('text-muted-foreground')
+    })
+
+    it('highlights Projects link when on projects page', () => {
+      (usePathname as jest.Mock).mockReturnValue('/projects')
+      const { container } = render(<Header />)
+
+      const desktopNav = container.querySelector('nav.hidden.md\\:flex')
+      const homeLink = desktopNav?.querySelector('a[href="/"]')
+      const projectsLink = desktopNav?.querySelector('a[href="/projects"]')
+
+      expect(homeLink?.className).toContain('text-muted-foreground')
+      expect(projectsLink?.className).toContain('text-foreground')
+    })
+
+    it('highlights Projects link when on a project detail page', () => {
+      (usePathname as jest.Mock).mockReturnValue('/projects/have-we-met')
+      const { container } = render(<Header />)
+
+      const desktopNav = container.querySelector('nav.hidden.md\\:flex')
+      const homeLink = desktopNav?.querySelector('a[href="/"]')
+      const projectsLink = desktopNav?.querySelector('a[href="/projects"]')
+
+      expect(homeLink?.className).toContain('text-muted-foreground')
+      expect(projectsLink?.className).toContain('text-foreground')
+    })
+
+    it('highlights correct link in mobile menu when on projects page', () => {
+      (usePathname as jest.Mock).mockReturnValue('/projects')
+      render(<Header />)
+
+      const menuButton = screen.getByRole('button', { name: /toggle menu/i })
+      fireEvent.click(menuButton)
+
+      // In mobile menu, the projects link should have the active styling
+      const mobileNavLinks = screen.getAllByText('Projects')
+      // Find the mobile nav link (in sheet content)
+      const mobileProjectsLink = mobileNavLinks.find(
+        (link) => link.closest('[role="dialog"]')
+      )
+
+      expect(mobileProjectsLink?.className).toContain('text-foreground')
+      expect(mobileProjectsLink?.className).toContain('bg-accent')
+    })
+  })
 })
