@@ -5,7 +5,7 @@
 /**
  * Known link types for type-safe link handling
  */
-export type ProjectLinkType = 'github' | 'npm' | 'demo' | 'docs' | 'article' | 'other';
+export type ProjectLinkType = 'github' | 'npm' | 'demo' | 'docs' | 'article' | 'code' | 'other';
 
 /**
  * Project type definition
@@ -63,6 +63,9 @@ export interface ProjectLink {
 
   /** URL for the link */
   url: string;
+
+  /** Whether this is an internal link (uses Next.js Link) */
+  internal?: boolean;
 }
 
 /**

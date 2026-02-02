@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ProjectLink } from '@/types';
@@ -80,6 +81,25 @@ function DocumentIcon() {
   );
 }
 
+function CodeIcon() {
+  return (
+    <svg
+      className="w-5 h-5"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+      />
+    </svg>
+  );
+}
+
 function LinkIcon() {
   return (
     <svg
@@ -109,34 +129,77 @@ function getLinkIcon(type: string) {
       return <ExternalLinkIcon />;
     case 'docs':
       return <DocumentIcon />;
+    case 'code':
+      return <CodeIcon />;
     default:
       return <LinkIcon />;
   }
 }
 
-function getLinkVariant(type: string): 'default' | 'outline' {
+function getLinkVariant(type: string): 'default' | 'outline' | 'secondary' {
   switch (type) {
     case 'github':
       return 'default';
     case 'npm':
       return 'outline';
+    case 'code':
+      return 'secondary';
     default:
       return 'outline';
   }
 }
 
 /**
+ * Link wrapper component to handle both internal and external links
+ */
+function ProjectLinkButton({ link }: { link: ProjectLink }) {
+  const content = (
+    <>
+      {getLinkIcon(link.type)}
+      <span className="ml-2">{link.label}</span>
+    </>
+  );
+
+  if (link.internal) {
+    return (
+      <Button
+        variant={getLinkVariant(link.type)}
+        size="lg"
+        asChild
+        className="h-12"
+      >
+        <Link href={link.url}>{content}</Link>
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      variant={getLinkVariant(link.type)}
+      size="lg"
+      asChild
+      className="h-12"
+    >
+      <a href={link.url} target="_blank" rel="noopener noreferrer">
+        {content}
+      </a>
+    </Button>
+  );
+}
+
+/**
  * ProjectLinks displays prominent links for GitHub, npm, and other resources.
- * Primary links (GitHub, npm) are displayed as large buttons.
+ * Primary links (GitHub, npm, code) are displayed as large buttons.
  */
 export function ProjectLinks({ links, className }: ProjectLinksProps) {
   if (!links || links.length === 0) {
     return null;
   }
 
-  // Separate primary links (github, npm) from secondary links
-  const primaryLinks = links.filter((link) => link.type === 'github' || link.type === 'npm');
-  const secondaryLinks = links.filter((link) => link.type !== 'github' && link.type !== 'npm');
+  // Separate primary links (github, npm, code) from secondary links
+  const primaryTypes = ['github', 'npm', 'code'];
+  const primaryLinks = links.filter((link) => primaryTypes.includes(link.type));
+  const secondaryLinks = links.filter((link) => !primaryTypes.includes(link.type));
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -144,22 +207,7 @@ export function ProjectLinks({ links, className }: ProjectLinksProps) {
       {primaryLinks.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {primaryLinks.map((link) => (
-            <Button
-              key={link.url}
-              variant={getLinkVariant(link.type)}
-              size="lg"
-              asChild
-              className="h-12"
-            >
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {getLinkIcon(link.type)}
-                <span className="ml-2">{link.label}</span>
-              </a>
-            </Button>
+            <ProjectLinkButton key={link.url} link={link} />
           ))}
         </div>
       )}
@@ -167,18 +215,29 @@ export function ProjectLinks({ links, className }: ProjectLinksProps) {
       {/* Secondary Links - Smaller text links */}
       {secondaryLinks.length > 0 && (
         <div className="flex flex-wrap gap-4">
-          {secondaryLinks.map((link) => (
-            <a
-              key={link.url}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {getLinkIcon(link.type)}
-              {link.label}
-            </a>
-          ))}
+          {secondaryLinks.map((link) =>
+            link.internal ? (
+              <Link
+                key={link.url}
+                href={link.url}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {getLinkIcon(link.type)}
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.url}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {getLinkIcon(link.type)}
+                {link.label}
+              </a>
+            )
+          )}
         </div>
       )}
     </div>

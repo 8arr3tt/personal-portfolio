@@ -29,6 +29,12 @@ export const projects: Project[] = [
         label: 'npm Package',
         url: 'https://www.npmjs.com/package/have-we-met',
       },
+      {
+        type: 'code',
+        label: 'Browse Code',
+        url: '/projects/have-we-met/code',
+        internal: true,
+      },
     ],
     published: true,
     featured: true,

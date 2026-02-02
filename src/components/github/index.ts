@@ -21,3 +21,6 @@ export {
   type CodeSkeletonProps,
   type CardSkeletonProps,
 } from './loading-state';
+
+export { GitHubLink, GitHubIcon, type GitHubLinkProps } from './github-link';
+export { NpmLink, NpmIcon, type NpmLinkProps } from './npm-link';
