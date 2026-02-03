@@ -245,6 +245,25 @@
 }
 
 @layer utilities {
+  /* Header responsive utilities */
+  .desktop-nav {
+    display: none;
+  }
+
+  .mobile-nav {
+    display: flex;
+  }
+
+  @media (min-width: 768px) {
+    .desktop-nav {
+      display: flex;
+    }
+
+    .mobile-nav {
+      display: none;
+    }
+  }
+
   /* Responsive typography scale */
   .text-balance {
     text-wrap: balance;
