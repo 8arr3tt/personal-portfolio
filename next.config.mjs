@@ -10,7 +10,7 @@ const nextConfig = {
 const withMDX = createMDX({
   options: {
     // Use string plugin names for Turbopack compatibility
-    remarkPlugins: [],
+    remarkPlugins: ["remark-gfm"],
     rehypePlugins: [
       // rehype-pretty-code with serializable options for syntax highlighting
       [

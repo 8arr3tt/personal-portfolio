@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ProjectLink } from '@/types';
 
@@ -13,10 +12,10 @@ interface ProjectLinksProps {
 /**
  * Icon components for different link types
  */
-function GitHubIcon() {
+function GitHubIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="w-5 h-5"
+      className={cn("w-5 h-5", className)}
       fill="currentColor"
       viewBox="0 0 24 24"
       aria-hidden="true"
@@ -30,10 +29,10 @@ function GitHubIcon() {
   );
 }
 
-function NpmIcon() {
+function NpmIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="w-5 h-5"
+      className={cn("w-5 h-5", className)}
       fill="currentColor"
       viewBox="0 0 24 24"
       aria-hidden="true"
@@ -43,10 +42,10 @@ function NpmIcon() {
   );
 }
 
-function ExternalLinkIcon() {
+function ExternalLinkIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="w-5 h-5"
+      className={cn("w-5 h-5", className)}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -62,10 +61,10 @@ function ExternalLinkIcon() {
   );
 }
 
-function DocumentIcon() {
+function DocumentIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="w-5 h-5"
+      className={cn("w-5 h-5", className)}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -81,10 +80,10 @@ function DocumentIcon() {
   );
 }
 
-function CodeIcon() {
+function CodeIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="w-5 h-5"
+      className={cn("w-5 h-5", className)}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -100,10 +99,10 @@ function CodeIcon() {
   );
 }
 
-function LinkIcon() {
+function LinkIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="w-5 h-5"
+      className={cn("w-5 h-5", className)}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -119,33 +118,38 @@ function LinkIcon() {
   );
 }
 
-function getLinkIcon(type: string) {
+function getLinkIcon(type: string, className?: string) {
   switch (type) {
     case 'github':
-      return <GitHubIcon />;
+      return <GitHubIcon className={className} />;
     case 'npm':
-      return <NpmIcon />;
+      return <NpmIcon className={className} />;
     case 'demo':
-      return <ExternalLinkIcon />;
+      return <ExternalLinkIcon className={className} />;
     case 'docs':
-      return <DocumentIcon />;
+      return <DocumentIcon className={className} />;
     case 'code':
-      return <CodeIcon />;
+      return <CodeIcon className={className} />;
     default:
-      return <LinkIcon />;
+      return <LinkIcon className={className} />;
   }
 }
 
-function getLinkVariant(type: string): 'default' | 'outline' | 'secondary' {
+/**
+ * Get styles for different link types
+ */
+function getLinkStyles(type: string) {
+  const baseStyles = "inline-flex items-center gap-2.5 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200";
+
   switch (type) {
     case 'github':
-      return 'default';
+      return cn(baseStyles, "bg-[#24292f] text-white hover:bg-[#1b1f23] dark:bg-[#2d333b] dark:hover:bg-[#373e47]");
     case 'npm':
-      return 'outline';
+      return cn(baseStyles, "border-2 border-[#cb3837] text-[#cb3837] hover:bg-[#cb3837] hover:text-white");
     case 'code':
-      return 'secondary';
+      return cn(baseStyles, "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border");
     default:
-      return 'outline';
+      return cn(baseStyles, "bg-secondary text-secondary-foreground hover:bg-secondary/80");
   }
 }
 
@@ -153,37 +157,27 @@ function getLinkVariant(type: string): 'default' | 'outline' | 'secondary' {
  * Link wrapper component to handle both internal and external links
  */
 function ProjectLinkButton({ link }: { link: ProjectLink }) {
-  const content = (
-    <>
-      {getLinkIcon(link.type)}
-      <span className="ml-2">{link.label}</span>
-    </>
-  );
+  const styles = getLinkStyles(link.type);
 
   if (link.internal) {
     return (
-      <Button
-        variant={getLinkVariant(link.type)}
-        size="lg"
-        asChild
-        className="h-12"
-      >
-        <Link href={link.url}>{content}</Link>
-      </Button>
+      <Link href={link.url} className={styles}>
+        {getLinkIcon(link.type)}
+        <span>{link.label}</span>
+      </Link>
     );
   }
 
   return (
-    <Button
-      variant={getLinkVariant(link.type)}
-      size="lg"
-      asChild
-      className="h-12"
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={styles}
     >
-      <a href={link.url} target="_blank" rel="noopener noreferrer">
-        {content}
-      </a>
-    </Button>
+      {getLinkIcon(link.type)}
+      <span>{link.label}</span>
+    </a>
   );
 }
 

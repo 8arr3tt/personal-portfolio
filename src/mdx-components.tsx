@@ -120,33 +120,33 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
 
     // Table
     table: ({ className, ...props }) => (
-      <div className="my-6 w-full overflow-y-auto">
-        <table className={cn("w-full", className)} {...props} />
+      <div className="my-6 w-full overflow-x-auto rounded-lg border border-border">
+        <table className={cn("w-full text-sm", className)} {...props} />
       </div>
     ),
     thead: ({ className, ...props }) => (
-      <thead className={cn("border-b", className)} {...props} />
+      <thead className={cn("bg-muted/50", className)} {...props} />
     ),
     tbody: ({ className, ...props }) => (
       <tbody className={cn("[&_tr:last-child]:border-0", className)} {...props} />
     ),
     tr: ({ className, ...props }) => (
       <tr
-        className={cn("border-b transition-colors hover:bg-muted/50", className)}
+        className={cn("border-b border-border transition-colors hover:bg-muted/30", className)}
         {...props}
       />
     ),
     th: ({ className, ...props }) => (
       <th
         className={cn(
-          "h-12 px-4 text-left align-middle font-medium text-muted-foreground",
+          "h-11 px-4 text-left align-middle font-semibold text-foreground border-b border-border",
           className
         )}
         {...props}
       />
     ),
     td: ({ className, ...props }) => (
-      <td className={cn("p-4 align-middle", className)} {...props} />
+      <td className={cn("px-4 py-3 align-middle", className)} {...props} />
     ),
 
     // Images
